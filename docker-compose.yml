@@ -6,25 +6,22 @@ services:
           depends_on:
             - master
             - worker
-            - worker_2
-            - worker_3
-            - worker_4
-            - worker_5  
+            - spark-ui-proxy
           environment:
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-            - REDSHIFT_BI_USERNAME=${REDSHIFT_BI_USERNAME}
-            - REDSHIFT_BI_PASSWORD=${REDSHIFT_BI_PASSWORD}
-            - SPARK_PUBLIC_DNS=localhost
           expose:
+              - 8888
               - 4040
           ports:
-              - 4040:4040
               - 8888:8888
           volumes:
             - ./:/home/jovyan/work
             - ~/.ivy2:/home/jovyan/.ivy2
+            - ~/.jupyter:/home/jovyan/.jupyter
           command: ['/usr/local/bin/start-notebook.sh']
+          networks:
+            - spark-clstr
 
     master:
         image: jupyter/all-spark-notebook
@@ -32,8 +29,8 @@ services:
         environment:
             MASTER: spark://master:7077
             SPARK_CONF_DIR: /conf
-            SPARK_PUBLIC_DNS: localhost
-        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.master.Master']
+            SPARK_MASTER_HOST: master
+        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.master.Master', '-h', 'master']
         expose:
             - 7001
             - 7002 
@@ -45,8 +42,11 @@ services:
             - 6066
         ports:
             - 6066:6066
+            - 4040:4040
             - 7077:7077
-            - 8080:8080
+            - 28080:8080
+        networks:
+            - spark-clstr
         volumes:
             - ./spark/conf/master:/conf
             - ./spark/data:/tmp/data
@@ -58,12 +58,9 @@ services:
         depends_on: 
             - master
         environment:
-            GRANT_SUDO: 'yes'
             SPARK_WORKER_DIR: '/tmp/data/worker'
-            SPARK_WORKER_MEMORY: 512mb
             SPARK_WORKER_PORT: 8881
             SPARK_WORKER_WEBUI_PORT: 8081
-            SPARK_PUBLIC_DNS: 'localhost'
         expose:
             - 7012
             - 7013
@@ -72,122 +69,22 @@ services:
             - 7016
             - 8881
             - 8081
-        ports:
-            - "8881:8881"
-            - "8081:8081"
         volumes:
             - ./spark/conf/worker:/conf
             - ./spark/data:/tmp/data 
             - ~/.ivy2:/home/jovyan/.ivy2
+        networks:
+            - spark-clstr
 
-    worker_2:
-        image: jupyter/all-spark-notebook
-        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.worker.Worker', 'spark://master:7077']
-        depends_on: 
-            - master
-        environment:
-            GRANT_SUDO: 'yes'
-            SPARK_WORKER_DIR: '/tmp/data/worker'
-            SPARK_WORKER_MEMORY: 512mb
-            SPARK_WORKER_PORT: 8881
-            SPARK_WORKER_WEBUI_PORT: 8082
-            SPARK_PUBLIC_DNS: 'localhost'
-        expose:
-            - 7012
-            - 7013
-            - 7014
-            - 7015
-            - 7016
-            - 8881
-            - 8082
+    spark-ui-proxy:
+        image: yanndegat/spark-ui-proxy
+        command: master:8080 9999
         ports:
-            - "8882:8882"
-            - "8082:8082"
-        volumes:
-            - ./spark/conf/worker:/conf
-            - ./spark/data:/tmp/data 
-            - ~/.ivy2:/home/jovyan/.ivy2
-    worker_3:
-        image: jupyter/all-spark-notebook
-        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.worker.Worker', 'spark://master:7077']
-        depends_on: 
-            - master
-        environment:
-            GRANT_SUDO: 'yes'
-            SPARK_WORKER_DIR: '/tmp/data/worker'
-            SPARK_WORKER_MEMORY: 512mb
-            SPARK_WORKER_PORT: 8881
-            SPARK_WORKER_WEBUI_PORT: 8083
-            SPARK_PUBLIC_DNS: 'localhost'
-        expose:
-            - 7012
-            - 7013
-            - 7014
-            - 7015
-            - 7016
-            - 8881
-            - 8083
-        ports:
-            - "8883:8883"
-            - "8083:8083"
-        volumes:
-            - ./spark/conf/worker:/conf
-            - ./spark/data:/tmp/data 
-            - ~/.ivy2:/home/jovyan/.ivy2
+            - 8080:9999
+        networks:
+            - spark-clstr
 
-    worker_4:
-        image: jupyter/all-spark-notebook
-        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.worker.Worker', 'spark://master:7077']
-        depends_on: 
-            - master
-        environment:
-            GRANT_SUDO: 'yes'
-            SPARK_WORKER_DIR: '/tmp/data/worker'
-            SPARK_WORKER_MEMORY: 512mb
-            SPARK_WORKER_PORT: 8881
-            SPARK_WORKER_WEBUI_PORT: 8084
-            SPARK_PUBLIC_DNS: 'localhost'
-        expose:
-            - 7012
-            - 7013
-            - 7014
-            - 7015
-            - 7016
-            - 8881
-            - 8084
-        ports:
-            - "8884:8884"
-            - "8084:8084"
-        volumes:
-            - ./spark/conf/worker:/conf
-            - ./spark/data:/tmp/data 
-            - ~/.ivy2:/home/jovyan/.ivy2
 
-    worker_5:
-        image: jupyter/all-spark-notebook
-        command: ['/usr/local/spark/bin/spark-class', 'org.apache.spark.deploy.worker.Worker', 'spark://master:7077']
-        depends_on: 
-            - master
-        environment:
-            GRANT_SUDO: 'yes'
-            SPARK_WORKER_DIR: '/tmp/data/worker'
-            SPARK_WORKER_MEMORY: 512mb
-            SPARK_WORKER_PORT: 8881
-            SPARK_WORKER_WEBUI_PORT: 8085
-            SPARK_PUBLIC_DNS: 'localhost'
-        expose:
-            - 7012
-            - 7013
-            - 7014
-            - 7015
-            - 7016
-            - 8881
-            - 8085
-        ports:
-            - "8885:8885"
-            - "8085:8085"
-        volumes:
-            - ./spark/conf/worker:/conf
-            - ./spark/data:/tmp/data 
-            - ~/.ivy2:/home/jovyan/.ivy2
+networks:
+    spark-clstr:
 
