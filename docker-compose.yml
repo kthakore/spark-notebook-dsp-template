@@ -10,6 +10,7 @@ services:
           environment:
             - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
             - AWS_SECRET_KEY=${AWS_SECRET_KEY}
+            - GRANT_SUDO=yes
           expose:
               - 8888
               - 4040
